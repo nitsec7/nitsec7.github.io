@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nitesh Patel — Security Researcher</title>
+<meta name="description" content="Nitesh Patel (nitsec7) — security researcher. Attack to Protect. Findings, tips, and contact." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:#0B0F1A; --panel:#131A28; --panel-2:#0F1521; --border:#212B3D; --border-2:#2C3850;
+    --ink:#E8ECF4; --muted:#7E8AA0; --accent:#FFB020; --accent-dim:#7a5410;
+    --crit:#FF4D5E; --high:#FF8A3D; --med:#F5C518; --low:#6B7688;
+    --radius:14px; --maxw:1080px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} *{animation:none!important;transition:none!important;} }
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:"Inter",system-ui,sans-serif; line-height:1.6; -webkit-font-smoothing:antialiased; }
+
+  /* ===== Ambient background ===== */
+  .bg-fx{ position:fixed; inset:0; z-index:-1; pointer-events:none; overflow:hidden; background:var(--bg); }
+  .bg-fx::before{ content:""; position:absolute; inset:-4px;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size:46px 46px;
+    -webkit-mask-image:radial-gradient(130% 95% at 50% -5%, #000 28%, transparent 76%);
+            mask-image:radial-gradient(130% 95% at 50% -5%, #000 28%, transparent 76%);
+    animation:gridPan 26s linear infinite; }
+  @keyframes gridPan{ from{ background-position:0 0, 0 0; } to{ background-position:46px 46px, 46px 46px; } }
+  .orb{ position:absolute; border-radius:50%; filter:blur(72px); }
+  .orb.a{ width:540px; height:540px; top:-170px; right:-90px; background:radial-gradient(circle at 35% 35%, rgba(255,176,32,0.42), transparent 66%); animation:drift1 28s ease-in-out infinite; }
+  .orb.b{ width:480px; height:480px; bottom:-180px; left:-130px; background:radial-gradient(circle at 50% 50%, rgba(63,182,168,0.34), transparent 66%); animation:drift2 32s ease-in-out infinite; }
+  .orb.c{ width:400px; height:400px; top:44%; left:52%; background:radial-gradient(circle at 50% 50%, rgba(110,168,255,0.26), transparent 66%); animation:drift3 36s ease-in-out infinite; }
+  @keyframes drift1{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(-60px,44px); } }
+  @keyframes drift2{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(52px,-32px); } }
+  @keyframes drift3{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(-44px,-28px) scale(1.12); } }
+  @media (prefers-reduced-motion: reduce){ .bg-fx::before, .orb{ animation:none; } }
+  a{ color:inherit; text-decoration:none; }
+  .wrap{ max-width:var(--maxw); margin:0 auto; padding:0 24px; }
+  h1,h2,h3{ font-family:"Sora",sans-serif; font-weight:700; letter-spacing:-0.02em; margin:0; }
+  .mono{ font-family:"JetBrains Mono",monospace; }
+
+  header.nav{ position:sticky; top:0; z-index:50; backdrop-filter:blur(10px); background:rgba(11,15,26,0.72); border-bottom:1px solid var(--border); }
+  .nav-inner{ display:flex; align-items:center; justify-content:space-between; height:64px; }
+  .brand{ display:flex; align-items:center; gap:10px; font-family:"JetBrains Mono",monospace; font-weight:700; font-size:15px; }
+  .brand .dot{ width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 12px var(--accent); animation:dotPulse 2.6s ease-in-out infinite; }
+  @keyframes dotPulse{ 0%,100%{ box-shadow:0 0 12px var(--accent); opacity:1; } 50%{ box-shadow:0 0 3px var(--accent); opacity:.7; } }
+  .hl-line{ display:inline-block; }
+  @media (prefers-reduced-motion: reduce){ .brand .dot{ animation:none; } }
+  .brand .caret{ color:var(--accent); }
+  .nav-links{ display:flex; align-items:center; gap:26px; }
+  .nav-links a{ color:var(--muted); font-size:14px; font-weight:500; transition:color .18s; }
+  .nav-links a:hover{ color:var(--ink); }
+  .nav-cta{ border:1px solid var(--border-2); border-radius:999px; padding:8px 16px; color:var(--ink)!important; font-size:13px; font-weight:600; transition:border-color .18s, background .18s; }
+  .nav-cta:hover{ border-color:var(--accent); background:rgba(255,176,32,0.08); }
+  .nav-toggle{ display:none; background:none; border:0; color:var(--ink); cursor:pointer; padding:8px; }
+  @media (max-width:760px){
+    .nav-links{ position:absolute; top:64px; left:0; right:0; flex-direction:column; gap:0; background:var(--panel); border-bottom:1px solid var(--border); align-items:stretch; max-height:0; overflow:hidden; transition:max-height .28s ease; }
+    .nav-links.open{ max-height:360px; }
+    .nav-links a{ padding:14px 24px; border-top:1px solid var(--border); }
+    .nav-cta{ margin:12px 24px; text-align:center; }
+    .nav-toggle{ display:block; }
+  }
+
+  .hero{ padding:88px 0 56px; }
+  .avatar-wrap{ display:flex; align-items:center; gap:16px; margin-bottom:26px; }
+  .avatar-ring{ position:relative; width:70px; height:70px; display:grid; place-items:center; animation:avatarFloat 4.5s ease-in-out infinite; filter:drop-shadow(0 0 10px rgba(255,176,32,0.22)); }
+  .avatar-ring::before{ content:""; position:absolute; inset:0; border-radius:50%; background:conic-gradient(from 0deg, var(--accent), rgba(255,176,32,0.06) 140deg, rgba(255,176,32,0.06) 220deg, var(--accent)); animation:avatarSpin 4.5s linear infinite; }
+  .avatar-ring::after{ content:""; position:absolute; inset:4px; border-radius:50%; background:var(--bg); }
+  .avatar{ position:relative; z-index:1; width:58px; height:58px; border-radius:50%; object-fit:cover; background:#000; }
+  .avatar-fallback{ position:relative; z-index:1; width:58px; height:58px; border-radius:50%; display:none; align-items:center; justify-content:center; font-family:"JetBrains Mono",monospace; font-weight:700; font-size:20px; color:var(--accent); background:var(--panel); }
+  .avatar-handle{ font-family:"JetBrains Mono",monospace; font-size:13.5px; color:var(--muted); }
+  .avatar-handle b{ color:var(--ink); font-weight:600; }
+  @keyframes avatarSpin{ to{ transform:rotate(360deg); } }
+  @keyframes avatarFloat{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-4px);} }
+  @media (prefers-reduced-motion: reduce){ .avatar-ring, .avatar-ring::before{ animation:none; } }
+  .eyebrow{ font-family:"JetBrains Mono",monospace; font-size:12.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin-bottom:22px; display:inline-flex; align-items:center; gap:10px; }
+  .eyebrow::before{ content:""; width:26px; height:1px; background:var(--accent); display:inline-block; }
+  .hero h1{ font-size:clamp(38px,7vw,68px); line-height:1.03; font-weight:800; }
+  .hero h1 .accent{ color:var(--accent); }
+  .hero .lede{ color:var(--muted); font-size:clamp(16px,2.2vw,19px); max-width:640px; margin:22px 0 34px; }
+  .hero-actions{ display:flex; flex-wrap:wrap; gap:12px; }
+  .btn{ display:inline-flex; align-items:center; gap:9px; font-weight:600; font-size:14.5px; padding:12px 22px; border-radius:10px; cursor:pointer; transition:transform .15s, background .18s, border-color .18s; }
+  .btn:hover{ transform:translateY(-1px); }
+  .btn-primary{ background:var(--accent); color:#1a1204; border:1px solid var(--accent); }
+  .btn-primary:hover{ background:#ffbf3d; }
+  .btn-ghost{ background:transparent; color:var(--ink); border:1px solid var(--border-2); }
+  .btn-ghost:hover{ border-color:var(--accent); }
+
+  .stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:1px; margin-top:56px; background:var(--border); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .stat{ background:var(--panel); padding:24px 22px; }
+  .stat .num{ font-family:"Sora",sans-serif; font-size:30px; font-weight:800; letter-spacing:-0.03em; }
+  .stat .label{ font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-top:4px; }
+  .stat .num.secret{ filter:blur(8px); cursor:pointer; user-select:none; -webkit-user-select:none; transition:filter .25s ease; outline:none; }
+  .stat .num.secret:hover, .stat .num.secret:focus-visible, .stat .num.secret.revealed{ filter:blur(0); }
+  @media (max-width:640px){ .stats{ grid-template-columns:repeat(2,1fr); } }
+
+  section{ padding:64px 0; scroll-margin-top:80px; }
+  .sec-head{ display:flex; align-items:baseline; gap:16px; margin-bottom:34px; }
+  .sec-num{ font-family:"JetBrains Mono",monospace; color:var(--accent); font-size:14px; }
+  .sec-head h2{ font-size:clamp(24px,4vw,34px); }
+  .sec-desc{ color:var(--muted); max-width:620px; margin:-20px 0 34px; }
+
+  .ledger{ border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .ledger-row{ display:grid; grid-template-columns:96px 1.6fr 1fr 120px; gap:18px; align-items:center; padding:18px 22px; border-top:1px solid var(--border); background:var(--panel); transition:background .16s; }
+  .ledger-row:first-child{ border-top:0; }
+  .ledger-head{ background:var(--panel-2); font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); padding:12px 22px; }
+  .ledger-row.item:hover{ background:#17202f; }
+  .sev{ font-family:"JetBrains Mono",monospace; font-size:11px; font-weight:700; letter-spacing:.06em; display:inline-flex; align-items:center; gap:7px; padding:4px 10px; border-radius:999px; }
+  .sev::before{ content:""; width:7px; height:7px; border-radius:50%; background:currentColor; }
+  .sev.crit{ color:var(--crit); background:rgba(255,77,94,0.12); }
+  .sev.high{ color:var(--high); background:rgba(255,138,61,0.12); }
+  .sev.med{ color:var(--med); background:rgba(245,197,24,0.12); }
+  .sev.low{ color:var(--low); background:rgba(107,118,136,0.14); }
+  .sev.info{ color:#6EA8FF; background:rgba(110,168,255,0.12); }
+  .f-title{ font-weight:600; font-size:15px; }
+  .f-id{ font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--muted); margin-top:3px; }
+  .f-vendor{ color:var(--muted); font-size:14px; }
+  .f-status{ font-family:"JetBrains Mono",monospace; font-size:12px; font-weight:500; text-align:right; }
+  .f-status.fixed{ color:var(--med); }
+  .f-status.public{ color:var(--accent); }
+  .f-status.reported{ color:var(--muted); }
+  .f-status.private{ color:var(--muted); }
+  .f-meta{ display:flex; align-items:center; gap:10px; margin-top:5px; flex-wrap:wrap; }
+  .f-meta .f-id{ margin-top:0; }
+  .bounty{ font-family:"JetBrains Mono",monospace; font-size:11px; font-weight:700; color:#5ED2A8; background:rgba(94,210,168,0.12); border:1px solid rgba(94,210,168,0.28); padding:2px 8px; border-radius:999px; }
+  .ledger-row.is-private{ cursor:default; }
+  .ledger-row.is-private:hover{ background:var(--panel); }
+  @media (max-width:720px){
+    .ledger-head{ display:none; }
+    .ledger-row{ grid-template-columns:1fr; gap:10px; padding:18px 18px; }
+    .f-status{ text-align:left; }
+  }
+
+  .tips{ display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+  @media (max-width:720px){ .tips{ grid-template-columns:1fr; } }
+  .tip{ border:1px solid var(--border); border-radius:var(--radius); background:var(--panel); padding:24px; position:relative; transition:border-color .18s, transform .18s; }
+  .tip:hover{ border-color:var(--border-2); transform:translateY(-2px); }
+  .tip .kicker{ font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--accent); margin-bottom:12px; }
+  .tip h3{ font-size:17px; margin-bottom:8px; }
+  .tip p{ color:var(--muted); font-size:14.5px; margin:0; }
+
+  .about{ display:grid; grid-template-columns:1fr 1fr; gap:44px; align-items:start; }
+  @media (max-width:720px){ .about{ grid-template-columns:1fr; gap:28px; } }
+  .about p{ color:#c3cad8; font-size:15.5px; }
+  .about p + p{ margin-top:16px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .chip{ font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--muted); border:1px solid var(--border); border-radius:8px; padding:6px 11px; background:var(--panel-2); }
+  .focus-label{ font-family:"JetBrains Mono",monospace; color:var(--muted); font-size:12px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:14px; }
+  .quotes{ display:grid; gap:18px; }
+  .quote-card{ position:relative; border:1px solid var(--border); border-radius:var(--radius); background:var(--panel); padding:34px 38px; max-width:860px; overflow:hidden; transition:border-color .18s; }
+  .quote-card:hover{ border-color:var(--border-2); }
+  .quote-card::before{ content:"“"; position:absolute; top:0; left:20px; font-family:"Sora",sans-serif; font-weight:800; font-size:96px; line-height:1; color:var(--accent); opacity:.18; }
+  .quote-text{ position:relative; margin:0; font-size:clamp(16px,2.2vw,20px); line-height:1.66; color:#dfe5ef; font-style:italic; }
+  .quote-attr{ display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-top:22px; }
+  .quote-badge{ font-family:"JetBrains Mono",monospace; font-size:11px; font-weight:700; letter-spacing:.04em; color:var(--muted); border:1px solid var(--border-2); border-radius:999px; padding:4px 10px; }
+  .quote-attr .who{ font-family:"JetBrains Mono",monospace; font-weight:700; color:var(--ink); font-size:13.5px; }
+  .quote-attr .ctx{ color:var(--muted); font-size:13px; }
+  @media (max-width:720px){ .quote-card{ padding:28px 22px; } }
+
+  .contact-card{ border:1px solid var(--border); border-radius:var(--radius); background:var(--panel); padding:40px; text-align:center; background-image:radial-gradient(500px 200px at 50% 0%, rgba(255,176,32,0.08), transparent 70%); }
+  .contact-card h2{ font-size:clamp(24px,4vw,32px); margin-bottom:10px; }
+  .contact-card p{ color:var(--muted); max-width:480px; margin:0 auto 26px; }
+  .email-btn{ display:inline-flex; align-items:center; gap:10px; font-family:"JetBrains Mono",monospace; font-size:15px; font-weight:500; border:1px solid var(--border-2); border-radius:10px; padding:13px 20px; cursor:pointer; color:var(--ink); background:var(--panel-2); transition:border-color .18s; }
+  .email-btn:hover{ border-color:var(--accent); }
+  .socials{ display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-top:24px; }
+  .social{ display:inline-flex; align-items:center; gap:8px; font-size:14px; font-weight:500; color:var(--muted); border:1px solid var(--border); border-radius:999px; padding:9px 16px; transition:all .18s; }
+  .social:hover{ color:var(--ink); border-color:var(--accent); }
+  .social svg{ width:16px; height:16px; }
+  .footer-pgp{ font-size:12px; margin-top:22px; }
+
+  footer.site{ border-top:1px solid var(--border); padding:30px 0; margin-top:40px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; color:var(--muted); font-size:13px; font-family:"JetBrains Mono",monospace; }
+
+  .reveal{ opacity:0; transform:translateY(14px); transition:opacity .6s ease, transform .6s ease; }
+  .reveal.in{ opacity:1; transform:none; }
+  @media (prefers-reduced-motion: reduce){ .reveal{ opacity:1; transform:none; } }
+</style>
+</head>
+<body>
+<div class="bg-fx" aria-hidden="true">
+  <span class="orb a"></span>
+  <span class="orb b"></span>
+  <span class="orb c"></span>
+</div>
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a href="#top" class="brand"><span class="dot"></span><span class="caret">~/</span><span id="brandHandle"></span></a>
+    <nav class="nav-links" id="navLinks">
+      <a href="#findings">Findings</a>
+      <a href="#tips">Tips</a>
+      <a href="#about">About</a>
+      <a href="#testimonials">Testimonials</a>
+      <a href="#contact" class="nav-cta">Contact</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="top">
+  <div class="hero wrap">
+    <div class="avatar-wrap">
+      <span class="avatar-ring">
+        <img class="avatar" id="avatarImg" alt="" onerror="this.style.display='none';document.getElementById('avatarFallback').style.display='flex';" />
+        <span class="avatar-fallback" id="avatarFallback"></span>
+      </span>
+      <span class="avatar-handle" id="avatarHandle"></span>
+    </div>
+    <span class="eyebrow" id="eyebrow"></span>
+    <h1 id="headline"></h1>
+    <p class="lede" id="lede"></p>
+    <div class="hero-actions">
+      <a href="#findings" class="btn btn-primary">View findings</a>
+      <a href="#contact" class="btn btn-ghost">Get in touch</a>
+    </div>
+    <div class="stats reveal" id="stats"></div>
+  </div>
+
+  <section id="findings">
+    <div class="wrap">
+      <div class="sec-head"><h2>Disclosure ledger</h2></div>
+      <div class="ledger reveal">
+        <div class="ledger-row ledger-head">
+          <div>Severity</div><div>Finding</div><div>Vendor / Target</div><div style="text-align:right">Status</div>
+        </div>
+        <div id="findings-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tips">
+    <div class="wrap">
+      <div class="sec-head"><h2>Research Notes</h2></div>
+      <p class="sec-desc">Methodologies, workflows, and practical techniques from real-world security research.</p>
+      <div class="tips" id="tips-list"></div>
+    </div>
+  </section>
+
+  <section id="about">
+    <div class="wrap">
+      <div class="sec-head"><h2>About</h2></div>
+      <div class="about">
+        <div id="about-text"></div>
+        <div>
+          <div class="focus-label">Focus areas</div>
+          <div class="chips" id="focus-chips"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="testimonials">
+    <div class="wrap">
+      <div class="sec-head"><h2>Testimonials</h2></div>
+      <p class="sec-desc">Feedback from teams I have collaborated with through private disclosure programs.</p>
+      <div class="quotes reveal" id="testimonials-list"></div>
+    </div>
+  </section>
+
+  <section id="contact">
+    <div class="wrap">
+      <div class="contact-card reveal">
+        <h2>Let's talk security</h2>
+        <p>Have a security issue, collaboration idea, or speaking opportunity? Feel free to reach out.</p>
+        <button class="email-btn" id="emailBtn"><span id="emailText"></span></button>
+        <div class="socials" id="socials"></div>
+        <p class="footer-pgp mono" id="pgp"></p>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <footer class="site">
+      <span>&copy; <span id="year"></span> <span id="footName"></span></span>
+      <span>Attack to Protect</span>
+    </footer>
+  </div>
+</main>
+
+<script>
+/* =======================================================================
+   ▼▼▼  EDIT YOUR CONTENT HERE  ▼▼▼
+   This is the ONLY part you ever need to touch. Change text between the
+   quotes. To add a finding or tip, copy one { ... } block, paste it in the
+   list, and edit it. Keep the commas between blocks.
+   ======================================================================= */
+const DATA = {
+
+  // --- Identity ---
+  name:   "Nitesh Patel",
+  handle: "nitsec7",
+  avatar: "data:image/jpeg;base64,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",
+
+  // Small tagline chips shown above your name (edit / add / remove):
+  taglines: ["Attack to Protect 🛡️", "Hack for Good"],
+
+  // Big headline. Each line is one row. Add "accent: true" to color a line amber.
+  headline: [
+    { text: "Nitesh Patel" },
+    { text: "Where trusted workflows meet" },
+    { text: "adversarial thinking.", accent: true }
+  ],
+
+  // Intro paragraph under the headline:
+  lede: "Security research driven by curiosity, disciplined testing, and responsible disclosure. Exploring attack surfaces, analyzing application logic, and sharing practical knowledge along the way.",
+
+  // --- Stats --- (add "secret: true" to any stat to blur it until hover/tap)
+  stats: [
+    { num: "2296",  label: "Reputation" },
+    { num: "4.37",  label: "Signal" },
+    { num: "17.88", label: "Impact" },
+    { num: "$50K+", label: "Bounty earned", secret: true }
+  ],
+
+  // --- Findings (newest first) ---
+  // sev options: "crit" | "high" | "med" | "low" | "info"
+  // private:  false = PUBLIC  -> row is clickable and opens "link" (shows ↗)
+  //           true  = PRIVATE -> shows title + bounty, marked 🔒, NOT clickable
+  // bounty:   use a tier "$", "$$", "$$$", "$$$$" (or an exact "$500"; leave "" for none)
+  findings: [
+    {
+      sev: "crit", sevLabel: "CRIT",
+      title: "WAF Bypass Enabling Authenticated SQL Injection (Cross-Tenant Database Read)",
+      meta: "Reported · 2026",
+      vendor: "Private program",
+      bounty: "$$$$",
+      private: true,
+      link: ""
+    },
+    {
+      sev: "high", sevLabel: "HIGH",
+      title: "Web Cache Deception Exposes User PII Through GraphQL Endpoints",
+      meta: "Reported · 2026",
+      vendor: "Private program",
+      bounty: "$$$$",
+      private: true,
+      link: ""
+    },
+    {
+      sev: "high", sevLabel: "HIGH",
+      title: "Broken Access Control Allows Phone Number Changes Without Verification via GraphQL",
+      meta: "Reported · 2026",
+      vendor: "Private program",
+      bounty: "$$$$",
+      private: true,
+      link: ""
+    },
+    {
+      sev: "high", sevLabel: "HIGH",
+      title: "Admin Approval Bypass Allows Unauthorized Profile Modification via API",
+      meta: "Reported · 2026",
+      vendor: "Private program",
+      bounty: "$$$$",
+      private: true,
+      link: ""
+    },
+    {
+      sev: "high", sevLabel: "HIGH",
+      title: "Deleted User's Personal Data Remains Accessible via Authenticated Download Endpoint",
+      meta: "Reported · 2024",
+      vendor: "Private program",
+      bounty: "$$$$",
+      private: true,
+      link: ""
+    },
+    {
+      sev: "high", sevLabel: "HIGH",
+      title: "Improper State Validation Leading to Discount and Payment Manipulation",
+      meta: "Reported · 2024",
+      vendor: "Private program",
+      bounty: "$$$$",
+      private: true,
+      link: ""
+    },
+    {
+      sev: "high", sevLabel: "HIGH",
+      title: "Improper Access Control Allows Gallery Editing After Administrative Revocation",
+      meta: "Reported · 2024",
+      vendor: "Private program",
+      bounty: "$$$$",
+      private: true,
+      link: ""
+    },
+    {
+      sev: "high", sevLabel: "HIGH",
+      title: "Broken Access Control Allows 2FA Reset Link Issuance Without Password Verification",
+      meta: "Reported · 2024",
+      vendor: "Private program",
+      bounty: "$$$$",
+      private: true,
+      link: ""
+    },
+    {
+      sev: "med", sevLabel: "MED",
+      title: "Rate Limit Bypass on Coupon Validation via Case Manipulation and Concurrent Requests",
+      meta: "Reported · 2024",
+      vendor: "Private program",
+      bounty: "$$$",
+      private: true,
+      link: ""
+    },
+    {
+      sev: "med", sevLabel: "MED",
+      title: "Bounty reward leakage via new Hacktivity feature on limited-disclosure reports",
+      meta: "H1 #2310620 · disclosed 2024-03-28",
+      vendor: "HackerOne",
+      bounty: "",
+      private: false,
+      link: "https://hackerone.com/reports/2310620"
+    }
+  ],
+
+  // --- Tips ---
+  tips: [
+    { kicker: "// logic",   title: "Understand Before You Test",  body: "Every meaningful finding begins with understanding the application’s logic." },
+    { kicker: "// fuzzing", title: "Tamper with every input",        body: "Experiment with parameters, headers, and request bodies to uncover hidden vulnerabilities." },
+    { kicker: "// recon",   title: "Map the full attack surface",     body: "Trace the complete attack surface by testing every endpoint and user workflow." },
+    { kicker: "// proof",   title: "Validate and prove every finding", body: "Validate every finding thoroughly and provide clear, reproducible proof." },
+    { kicker: "// mindset", title: "Stay consistent",                 body: "Keep learning, practice regularly, and study real-world write-ups." }
+  ],
+
+  // --- About (each string is a paragraph) ---
+  about: [
+    "I am an independent security researcher focused on application security and offensive testing. My work centers on identifying vulnerabilities that emerge from business logic, complex workflows, and unexpected application behavior.",
+    "I enjoy understanding how systems fail under adversarial conditions and turning those findings into practical security improvements. Along the way, I document my research, share what I learn, and continuously explore new attack techniques to improve both my skills and the security of modern applications."
+  ],
+  focusAreas: ["Attack Surface Recon", "GraphQL Security", "API Security", "Access Control", "Business Logic", "Workflow Analysis", "Information Disclosure"],
+
+  // --- Testimonials --- (copy a { } block to add more)
+  testimonials: [
+    {
+      quote: "We highly value his contributions to our program. He has a proven track record of uncovering important security issues, backed by high-quality reports. Working with him is a genuinely collaborative experience — he is responsive, constructive, and highly professional.",
+      author: "Private program team",
+      context: "On a vulnerability submission"
+    }
+  ],
+
+  // --- Contact ---
+  email: "nitsec7hackerone@gmail.com",                          // <-- your email
+  pgp:   "",  // <-- or set to "" to hide
+
+  // --- Social links ---
+  // icon options: "x" | "hackerone" | "github" | "linkedin" | "mastodon"
+  // Delete any block you don't want.
+  socials: [
+    { name: "X / Twitter", icon: "x",         url: "https://x.com/nitesh_patel7" },
+    { name: "HackerOne",   icon: "hackerone", url: "https://hackerone.com/nitsec7" }
+    // { name: "GitHub",   icon: "github",   url: "https://github.com/YOURNAME" },
+    // { name: "LinkedIn", icon: "linkedin", url: "https://linkedin.com/in/YOURNAME" }
+  ]
+};
+/* =======================================================================
+   ▲▲▲  END OF EDITABLE CONTENT  —  no need to change anything below  ▲▲▲
+   ======================================================================= */
+
+const ICONS = {
+  x:         '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>',
+  hackerone: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0 2 4.5v6.9c0 5.9 4.3 10.2 10 12.6 5.7-2.4 10-6.7 10-12.6V4.5L12 0zm0 3.2 6.5 2.9v5.3c0 4.2-2.9 7.4-6.5 9.3-3.6-1.9-6.5-5.1-6.5-9.3V6.1L12 3.2z"/><path d="M11 7h2v6h-2zm0 7h2v2h-2z"/></svg>',
+  github:    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>',
+  linkedin:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>',
+  mastodon:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.268 5.313c-.35-2.578-2.617-4.61-5.304-5.004C17.51.242 15.792 0 11.813 0h-.03c-3.98 0-4.835.242-5.288.309C3.882.692 1.496 2.518.917 5.127.64 6.412.61 7.837.661 9.143c.074 1.874.088 3.745.26 5.611.118 1.24.325 2.47.62 3.68.55 2.237 2.777 4.098 4.96 4.857 2.336.792 4.849.923 7.256.38.265-.061.527-.132.786-.213.585-.184 1.27-.39 1.774-.753a.057.057 0 00.023-.043v-1.809a.052.052 0 00-.02-.041.053.053 0 00-.046-.01 20.282 20.282 0 01-4.709.545c-2.73 0-3.463-1.284-3.674-1.818a5.593 5.593 0 01-.319-1.433.053.053 0 01.066-.054c1.517.363 3.072.546 4.632.546.376 0 .75 0 1.125-.01 1.57-.044 3.224-.124 4.768-.422.038-.008.077-.015.11-.024 2.435-.464 4.753-1.92 4.989-5.604.008-.145.03-1.52.03-1.67.002-.512.167-3.63-.024-5.545zm-3.748 9.195h-2.561V8.29c0-1.309-.55-1.976-1.67-1.976-1.23 0-1.846.79-1.846 2.35v3.403h-2.546V8.663c0-1.56-.617-2.35-1.848-2.35-1.112 0-1.668.668-1.67 1.977v6.218H4.822V8.102c0-1.31.337-2.35 1.011-3.12.696-.77 1.608-1.164 2.74-1.164 1.311 0 2.302.504 2.962 1.51l.638 1.07.638-1.07c.66-1.006 1.65-1.51 2.96-1.51 1.13 0 2.043.395 2.74 1.164.675.77 1.012 1.81 1.012 3.12z"/></svg>'
+};
+
+// Identity
+document.getElementById('brandHandle').textContent = DATA.handle;
+document.getElementById('footName').textContent = DATA.name;
+document.getElementById('year').textContent = new Date().getFullYear();
+document.title = DATA.name + " — Security Researcher";
+
+// Avatar
+const img = document.getElementById('avatarImg');
+img.src = DATA.avatar; img.alt = DATA.name;
+document.getElementById('avatarFallback').textContent = DATA.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+document.getElementById('avatarHandle').innerHTML = '<b>@'+DATA.handle+'</b> · HackerOne';
+
+// Eyebrow (taglines)
+document.getElementById('eyebrow').textContent = DATA.taglines.join(' · ');
+
+// Headline (each line becomes a span we can decode-animate)
+document.getElementById('headline').innerHTML = DATA.headline
+  .map(l => '<span class="hl-line'+(l.accent?' accent':'')+'" data-text="'+l.text.replace(/"/g,'&quot;')+'">'+l.text+'</span>')
+  .join('<br />');
+
+// Lede
+document.getElementById('lede').textContent = DATA.lede;
+
+// Stats
+document.getElementById('stats').innerHTML = DATA.stats.map(s => {
+  const numClass = 'num' + (s.secret ? ' secret' : '');
+  const attrs = s.secret ? ' tabindex="0" role="button" aria-label="Reveal '+s.label+'" title="Hover or tap to reveal"' : '';
+  return '<div class="stat"><div class="'+numClass+'"'+attrs+'>'+s.num+'</div><div class="label">'+s.label+'</div></div>';
+}).join('');
+document.querySelectorAll('#stats .num.secret').forEach(elm => {
+  const toggle = () => elm.classList.toggle('revealed');
+  elm.addEventListener('click', toggle);
+  elm.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+});
+
+// Findings -- PUBLIC rows link out to the report; PRIVATE rows show the bounty but do NOT redirect
+document.getElementById('findings-list').innerHTML = DATA.findings.map(f => {
+  const bounty = f.bounty ? '<span class="bounty">'+f.bounty+'</span>' : '';
+  const inner =
+    '<div><span class="sev '+f.sev+'">'+f.sevLabel+'</span></div>'+
+    '<div><div class="f-title">'+f.title+'</div><div class="f-meta"><span class="f-id mono">'+f.meta+'</span>'+bounty+'</div></div>'+
+    '<div class="f-vendor">'+f.vendor+'</div>';
+  if (f.private || !f.link) {
+    return '<div class="ledger-row item is-private" title="Private report — not publicly disclosed">'+
+      inner+'<div class="f-status private">PRIVATE \ud83d\udd12</div></div>';
+  }
+  return '<a class="ledger-row item" href="'+f.link+'" target="_blank" rel="noopener">'+
+    inner+'<div class="f-status public">PUBLIC \u2197</div></a>';
+}).join('');
+
+// Tips
+document.getElementById('tips-list').innerHTML = DATA.tips.map(t => (
+  '<div class="tip reveal"><div class="kicker mono">'+t.kicker+'</div><h3>'+t.title+'</h3><p>'+t.body+'</p></div>'
+)).join('');
+
+// About
+document.getElementById('about-text').innerHTML = DATA.about.map(p => '<p>'+p+'</p>').join('');
+document.getElementById('focus-chips').innerHTML = DATA.focusAreas.map(c => '<span class="chip">'+c+'</span>').join('');
+
+// Testimonials
+document.getElementById('testimonials-list').innerHTML = (DATA.testimonials || []).map(t => (
+  '<figure class="quote-card">'+
+    '<blockquote class="quote-text">'+t.quote+'</blockquote>'+
+    '<figcaption class="quote-attr"><span class="quote-badge">\ud83d\udd12 Private</span><span class="who">'+t.author+'</span>'+(t.context ? '<span class="ctx">'+t.context+'</span>' : '')+'</figcaption>'+
+  '</figure>'
+)).join('');
+
+// Contact
+const emailText = document.getElementById('emailText');
+emailText.textContent = DATA.email;
+const emailBtn = document.getElementById('emailBtn');
+emailBtn.addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(DATA.email); emailText.textContent = 'copied ✓'; setTimeout(()=>emailText.textContent=DATA.email,1400); }
+  catch(e){ window.location.href = 'mailto:'+DATA.email; }
+});
+document.getElementById('socials').innerHTML = DATA.socials.map(s => (
+  '<a class="social" href="'+s.url+'" target="_blank" rel="noopener">'+(ICONS[s.icon]||'')+s.name+'</a>'
+)).join('');
+const pgpEl = document.getElementById('pgp');
+if (DATA.pgp && DATA.pgp.trim()) pgpEl.textContent = DATA.pgp; else pgpEl.style.display = 'none';
+
+// Mobile nav
+const toggle = document.getElementById('navToggle');
+const links = document.getElementById('navLinks');
+toggle.addEventListener('click', () => { const open = links.classList.toggle('open'); toggle.setAttribute('aria-expanded', open); });
+links.querySelectorAll('a').forEach(a => a.addEventListener('click', () => { links.classList.remove('open'); toggle.setAttribute('aria-expanded','false'); }));
+
+// Reveal on scroll
+const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (!prefersReduced && 'IntersectionObserver' in window) {
+  const io = new IntersectionObserver((entries) => { entries.forEach(e => { if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } }); }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+} else { document.querySelectorAll('.reveal').forEach(el => el.classList.add('in')); }
+
+/* ---- Hero entrance + headline decode + stat count-up ---- */
+if (!prefersReduced) {
+  const heroSeq = [
+    document.querySelector('.avatar-wrap'),
+    document.getElementById('eyebrow'),
+    document.getElementById('headline'),
+    document.getElementById('lede'),
+    document.querySelector('.hero-actions'),
+    document.getElementById('stats')
+  ].filter(Boolean);
+  heroSeq.forEach(elm => { elm.style.opacity = '0'; elm.style.transform = 'translateY(16px)'; });
+  requestAnimationFrame(() => {
+    heroSeq.forEach((elm, i) => {
+      elm.style.transition = 'opacity .6s ease, transform .6s cubic-bezier(.2,.7,.2,1)';
+      elm.style.transitionDelay = (i * 0.09) + 's';
+      elm.style.opacity = '1';
+      elm.style.transform = 'none';
+    });
+  });
+
+  const glyphs = '!<>-_\\/[]{}=+*^?#01x';
+  document.querySelectorAll('.hl-line').forEach((line, idx) => {
+    const target = line.getAttribute('data-text') || line.textContent;
+    let frame = 0; const totalFrames = target.length + 10;
+    setTimeout(() => {
+      const iv = setInterval(() => {
+        const revealed = frame - 8;
+        let out = '';
+        for (let i = 0; i < target.length; i++) {
+          if (target[i] === ' ' || i < revealed) out += target[i];
+          else out += glyphs[Math.floor(Math.random() * glyphs.length)];
+        }
+        line.textContent = out;
+        if (frame++ >= totalFrames) { clearInterval(iv); line.textContent = target; }
+      }, 30);
+    }, 260 + idx * 130);
+  });
+
+  setTimeout(() => {
+    document.querySelectorAll('#stats .num').forEach(elm => {
+      if (elm.classList.contains('secret')) return;
+      const m = elm.textContent.trim().match(/^(\D*)(\d+(?:\.\d+)?)(.*)$/);
+      if (!m) return;
+      const prefix = m[1]; const end = parseFloat(m[2]); const suffix = m[3];
+      const decimals = (m[2].split('.')[1] || '').length;
+      const dur = 1000, t0 = performance.now();
+      (function step(t){
+        const p = Math.min((t - t0) / dur, 1);
+        const eased = 0.5 - Math.cos(p * Math.PI) / 2;
+        elm.textContent = prefix + (end * eased).toFixed(decimals) + suffix;
+        if (p < 1) requestAnimationFrame(step); else elm.textContent = prefix + m[2] + suffix;
+      })(t0);
+    });
+  }, 520);
+}
+
+/* ---- In-page smooth scrolling for menu/links (prevents the sandbox "external link" prompt) ---- */
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', (e) => {
+    const href = a.getAttribute('href');
+    if (!href || href === '#') return;
+    if (href === '#top') { e.preventDefault(); window.scrollTo({ top: 0, behavior: prefersReduced ? 'auto' : 'smooth' }); return; }
+    const target = document.querySelector(href);
+    if (!target) return;
+    e.preventDefault();
+    target.scrollIntoView({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'start' });
+  });
+});
+</script>
+</body>
+</html>
